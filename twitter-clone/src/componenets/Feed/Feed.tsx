@@ -1,60 +1,114 @@
-import { useState } from "react";
-import TweetBox from "./TweetBox";
-import Post from "./Post";
+import React, { useEffect, useState } from "react";
+import {
+  collection,
+  getDocs,
+  getDoc,
+  DocumentReference,
+  DocumentData,
+} from "firebase/firestore";
+import { db } from "../../firebase";
+import SubFeed from "./SubFeed";
 import "./Feed.css";
+import { Outlet, Route, Routes } from "react-router";
+import OpenedTweet from "../openedTweet/OpenedTweet";
+import { useUserAuth } from "../../auth";
 
-const Feed = () => {
-  const [feedSelectbox, setFeedSelectbox] = useState("For You");
+interface UserData {
+  displayname: string;
+  displayName: string;
+  avatar?: string;
+  verified: boolean;
+}
 
-  const handleFeedSelectbox = (value: string) => {
-    setFeedSelectbox(value);
-  };
+interface PosData {
+  text: string;
+  image?: string[];
+  likes: number;
+  userRef: DocumentReference<DocumentData>;
+}
+interface PostData {
+  text: string;
+  image?: string[];
+  likes: number;
+  userRef: DocumentReference<DocumentData>;
+  postRef: DocumentReference<DocumentData>;
+  displayname: string;
+  displayName: string;
+  verified: boolean;
+  avatar?: string;
+}
+
+const Feed: React.FC = () => {
+  const [posts, setPosts] = useState<PostData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true); // Initialize as true
+  const { postStack } = useUserAuth();
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true); // Set loading to true when fetching starts
+
+      const postsCol = collection(db, "posts");
+      const snapshot = await getDocs(postsCol);
+
+      const postsData: PostData[] = [];
+
+      for (const postDoc of snapshot.docs) {
+        const postData = postDoc.data() as PosData;
+
+        const userDoc = await getDoc(postData.userRef);
+        const userData: UserData = userDoc.data() as UserData;
+
+        const completePostData = {
+          ...postData,
+          postRef: postDoc.ref,
+          displayName: userData.displayName,
+          displayname: userData.displayname,
+          verified: userData.verified,
+          avatar: userData.avatar,
+        };
+        postsData.push(completePostData);
+      }
+
+      setPosts(postsData);
+      setLoading(false); // Set loading to false when fetching is done
+    };
+
+    fetchPosts();
+  }, []);
 
   return (
     <div className="feed-con">
       <div className="feed">
-        {/* Header */}
-        <div className="feed__header">
-          <h2>Home</h2>
-          <div className="feed__select">
-            <div
-              className={`feed__selectbox ${
-                feedSelectbox === "For You" && "feed__selectbox--active"
-              }`}
-              onClick={() => handleFeedSelectbox("For You")}
-            >
-              <div className="sub">For You</div>
-              {feedSelectbox === "For You" && (
-                <div className="feed__selectbox-bar"></div>
-              )}
-            </div>
-            <div
-              className={`feed__selectbox ${
-                feedSelectbox === "Following" && "feed__selectbox--active"
-              }`}
-              onClick={() => handleFeedSelectbox("Following")}
-            >
-              <div className="sub">Following</div>
-              {feedSelectbox === "Following" && (
-                <div className="feed__selectbox-bar"></div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <TweetBox />
-
-        <Post />
-        <Post />
-        <Post />
-        <Post />
-        <Post />
-        {/* Post */}
-        {/* Post */}
-        {/* Post */}
-        {/* Post */}
-        {/* Post */}
-        {/* Post */}
+        <Outlet />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              postStack[0] ? (
+                <OpenedTweet {...postStack[0]} />
+              ) : (
+                <>
+                  {loading ? (
+                    <div className="center">
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                      <div className="wave"></div>
+                    </div>
+                  ) : (
+                    <SubFeed posts={posts} />
+                  )}
+                </>
+              )
+            }
+          />
+        </Routes>
       </div>
     </div>
   );

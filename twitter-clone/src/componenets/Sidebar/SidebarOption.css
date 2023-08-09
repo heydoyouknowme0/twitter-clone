@@ -8,7 +8,7 @@
 }
 
 .SidebarOption:hover {
-    background-color: #e8f5fe;
+    background-color: rgba(232, 245, 254, 0.3);
     border-radius: 30px;
     color: var(--twitter-color);
     transition: color 150ms ease-out;

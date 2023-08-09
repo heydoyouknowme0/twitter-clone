@@ -22,4 +22,14 @@ code {
   body a {
     color: #809fff;
   }
+  input {
+    background-color: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+  }
+  
+  input::placeholder {
+    color: #888;
+  }
 }

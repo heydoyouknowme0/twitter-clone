@@ -1,0 +1,39 @@
+.userInfo {
+  display: flex;
+  justify-content: space-between;
+  padding: auto;
+  max-width: 250px;
+}
+.userInfo_sub {
+  display: flex;
+  gap: 10px;
+}
+.userInfo__avatar {
+  width: 48px !important;
+  height: 48px !important;
+}
+@media screen and (max-width: 1280px) {
+  .userInfo__info {
+    display: none;
+  }
+  .userInfo {
+    max-width: fit-content;
+    margin-left: auto;
+    padding-right: 15px;
+  }
+}
+
+@media screen and (max-width: 1280px) {
+  .userInfo {
+    padding-right: 8px;
+  }
+}
+@media screen and (max-width: 450px) {
+  .userInfo__avatar {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .userInfo {
+    padding-right: 0px;
+  }
+}
