@@ -1,81 +1,78 @@
 import "./Post.css";
-import { useNavigate } from "react-router";
+
 import { Avatar } from "@mui/material";
 import Heart from "react-animated-heart";
 import {
   ChatBubbleOutline,
-  FavoriteBorder,
   Repeat,
   ShareOutlined,
   VerifiedUser,
 } from "@mui/icons-material";
-import { useState, useEffect } from "react";
-import { useUserAuth } from "../../auth";
-import { DocumentData, DocumentReference, updateDoc } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+
+import {
+  DocumentData,
+  DocumentReference,
+  updateDoc,
+  increment,
+  collection,
+  addDoc,
+  setDoc,
+  doc,
+  deleteDoc,
+  getDoc,
+} from "firebase/firestore";
 import ImageGallery from "./ImageGallery";
+import { useUserAuth } from "../../auth";
 interface Prop {
   text: string;
   image?: string[];
   likes: number;
+  userRef: DocumentReference<DocumentData>;
   postRef: DocumentReference<DocumentData>;
+  onClick?: () => void;
+}
+interface UserData {
   displayname: string;
   displayName: string;
-  verified: boolean;
   avatar?: string;
+  verified: boolean;
 }
-const Post = ({
-  displayname,
-  displayName,
-  verified,
-  text,
-  image,
-  avatar,
-  likes,
-  postRef,
-}: Prop) => {
-  const [isclick, setClick] = useState(false);
-  const [likeCount, setLikeCount] = useState(likes);
-  const { addToPostStack } = useUserAuth();
+const Post = ({ text, image, likes, userRef, postRef }: Prop) => {
+  const { users } = useUserAuth();
+  const [user, setUser] = useState<UserData>({
+    displayName: "", // Default values
+    displayname: "",
+    avatar: "",
+    verified: false,
+  });
   useEffect(() => {
-    const updateLikeCount = async () => {
-      await updateDoc(postRef, { likes: likeCount });
+    const fetchUser = async () => {
+      const foundUser = users.find((user) => user.userRef.id === userRef.id);
+      if (foundUser) {
+        setUser(foundUser);
+      }
     };
-    updateLikeCount();
-  }, [likeCount]);
 
-  const handleLikeClick = () => {
-    setClick(!isclick);
-    setLikeCount(likeCount + (isclick ? -1 : 1));
-  };
+    fetchUser();
+  }, [users]);
 
-  const navigator = useNavigate();
-  const handleNav = () => {
-    addToPostStack({
-      displayname,
-      displayName,
-      verified,
-      text,
-      image,
-      avatar,
-      likes,
-      postRef,
-    });
-    navigator("/home/");
-  };
-
+  const [likeCount, setLikeCount] = useState(likes);
+  const [isclick, setIsclick] = useState(false);
+  const handleLikeClick = async () => {};
   return (
-    <div className="post" onClick={handleNav}>
+    <div className="post">
       <div className="post__avatar">
-        <Avatar src={avatar}></Avatar>
+        <Avatar src={user.avatar}></Avatar>
       </div>
       <div className="post__body">
         <div className="post__header">
           <div className="post__headerText">
             <h3>
-              {displayname}
+              {user.displayname}
               <span className="post__headerSpecial">
-                {verified ? <VerifiedUser className="post__badge" /> : ""} @
-                {displayName}
+                {user.verified ? <VerifiedUser className="post__badge" /> : ""}{" "}
+                @{user.displayName}
               </span>
             </h3>
           </div>
@@ -83,13 +80,18 @@ const Post = ({
             <p>{text}</p>
           </div>
         </div>
-        {/* {image ? <ImageGallery image={image} /> : ""} */}
+        {image ? <ImageGallery images={image} /> : ""}
         <div className="post__footer">
           <ChatBubbleOutline fontSize="small" />
           <Repeat fontSize="small" />
           <div className="liker">
             <div className="heart_wrapper">
-              <Heart isClick={isclick} onClick={handleLikeClick} />
+              <Heart
+                isClick={!isclick}
+                onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                  handleLikeClick(e)
+                }
+              />
             </div>
             <div>{likeCount}</div>
           </div>

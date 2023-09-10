@@ -45,3 +45,27 @@
   width: 50%;
   background-color: transparent;
 }
+.input-file {
+  display: none;
+}
+
+.file-label {
+  background-color: var(--twitter-color);
+  border: none;
+  color: white;
+  font-weight: 500;
+  text-transform: inherit;
+  border-radius: 30px;
+  text-align: center;
+  height: 40px;
+  width: 80px;
+  margin-top: 20px;
+}
+.file-label:hover {
+  background-color: #1a8cd8;
+}
+
+.sameLine {
+  display: flex;
+  padding: 2px 5px;
+}

@@ -6,18 +6,25 @@ import {
   doc,
   CollectionReference,
   DocumentData,
-  collection,
+  DocumentReference,
 } from "firebase/firestore";
-import { ChangeEvent, FormEvent, useState } from "react"; // Import useState hook if not already imported
+import { ChangeEvent, FormEvent, useEffect, useState } from "react"; // Import useState hook if not already imported
 import { db, storage } from "../../firebase";
 import { useUserAuth } from "../../auth";
 import Compressor from "compressorjs";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-const TweetBox = ({
-  colRef,
-}: {
+interface PostData {
+  text: string;
+  image?: string[];
+  likes: number;
+  userRef: DocumentReference<DocumentData>;
+  postRef: DocumentReference<DocumentData>;
+}
+interface tweetBoxProps {
+  addToPosts: (post: PostData) => void;
   colRef: CollectionReference<DocumentData>;
-}) => {
+}
+const TweetBox: React.FC<tweetBoxProps> = ({ addToPosts, colRef }) => {
   const { user } = useUserAuth();
   const [selectedImages, setSelectedImages] = useState<File[]>();
   const [errorMessage, setErrorMessage] = useState("");
@@ -78,6 +85,7 @@ const TweetBox = ({
     const userId = user?.uid;
 
     const text = formData.get("tweetText") as string;
+    if (!user) return;
     try {
       const imageUrls = [];
 
@@ -91,17 +99,22 @@ const TweetBox = ({
           imageUrls.push(imageURL);
         }
       }
-      const docRef = await addDoc(colRef, {
+      const post = {
         userRef: doc(db, "users/" + userId),
         text,
         image: imageUrls,
         likes: 0,
         likesRef: [],
         timestamp: serverTimestamp(),
-      });
-
+      };
+      const docRef = await addDoc(colRef, post);
+      const postex: PostData = {
+        ...post,
+        postRef: docRef,
+      };
       console.log("Tweet added with ID: ", docRef.id);
       form.reset();
+      addToPosts(postex);
     } catch (error) {
       console.error("Error adding tweet: ", error);
     }
@@ -110,21 +123,27 @@ const TweetBox = ({
     <div className="tweetBox">
       <form onSubmit={handleTweet}>
         <div className="tweetBox__input">
-          <Avatar src="https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png"></Avatar>
+          <Avatar src={user?.avatar}></Avatar>
           <textarea placeholder="What's happening?" name="tweetText"></textarea>
         </div>
-        <input
-          type="file"
-          className="form-control"
-          accept="image/*"
-          multiple
-          onChange={handleImageSelect}
-        />
 
+        <div className="sameLine">
+          <input
+            type="file"
+            id="input-file"
+            className="form-control input-file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+          />
+          <label className="file-label" htmlFor="input-file">
+            Choose Images
+          </label>
+          <Button className="tweetBox__tweetButton" type="submit">
+            Tweet
+          </Button>
+        </div>
         {errorMessage && <p style={{ textAlign: "center" }}>{errorMessage}</p>}
-        <Button className="tweetBox__tweetButton" type="submit">
-          Tweet
-        </Button>
       </form>
     </div>
   );

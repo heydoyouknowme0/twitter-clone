@@ -1,11 +1,14 @@
 import { Formik, Field, Form, ErrorMessage } from "formik";
-import { useState } from "react";
+import { ChangeEvent, useState } from "react";
 import * as Yup from "yup";
 import "./Up.css";
 import { Twitter } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import { useUserAuth } from "../../auth";
 import ErrorComponent from "../ErrorMessageSnackbar";
+import Compressor from "compressorjs";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { storage } from "../../firebase";
 
 type ValuesType = {
   displayName: string;
@@ -14,7 +17,6 @@ type ValuesType = {
 };
 type ValuesType2 = {
   displayname: string;
-  avatar: string;
 };
 type EssUser = {
   UID: string;
@@ -25,11 +27,54 @@ const Signup = () => {
   const [stage, setStage] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File>();
+  const [errorMessage, setErrorMessage] = useState("");
   const [EssUser, setEssUser] = useState<EssUser>({
     UID: "",
     displayName: "",
   });
+  const handleImageSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files.length === 1) {
+      const file = event.target.files[0];
+      const fileSizeLimit = 5 * 1024 * 1024;
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+      ];
+
+      if (file.size <= fileSizeLimit && allowedTypes.includes(file.type)) {
+        setErrorMessage("");
+
+        try {
+          const compressedFile = await compressImage(file);
+          setSelectedImage(compressedFile);
+        } catch (error) {
+          console.error("Error compressing image:", error);
+          event.target.value = "";
+          setErrorMessage("Error compressing");
+        }
+      } else {
+        event.target.value = "";
+        setErrorMessage(
+          "Invalid file selected. Please choose a valid image file."
+        );
+      }
+    }
+  };
   const t = useNavigate();
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise<File>((resolve, reject) => {
+      new Compressor(file, {
+        quality: 0.8,
+        success: (result) => {
+          resolve(new File([result], file.name, { type: result.type }));
+        },
+        error: (error: Error) => reject(error),
+      });
+    });
+  };
   const handleSignUp = async (values: ValuesType) => {
     try {
       setLoading(true);
@@ -54,12 +99,20 @@ const Signup = () => {
   };
   const handleSignUp2 = async (values: ValuesType2) => {
     try {
+      console.log("sdsf");
       setLoading(true);
       setErrors("");
+      let avatar = "";
+      if (selectedImage) {
+        const storageRef = ref(storage, `pfp/${EssUser.displayName}`);
+        await uploadBytes(storageRef, selectedImage);
+
+        avatar = await getDownloadURL(storageRef);
+      }
       await signUpExt(
         values.displayname,
         EssUser.displayName || "",
-        values.avatar,
+        avatar,
         EssUser.UID
       );
       t("/home");
@@ -77,7 +130,6 @@ const Signup = () => {
         <Formik
           initialValues={{
             displayname: "",
-            avatar: "",
           }}
           validationSchema={Yup.object({
             displayname: Yup.string().required("Name is required"),
@@ -115,25 +167,15 @@ const Signup = () => {
                         />
                       </div>
 
-                      <div className="input-group">
-                        <Field
-                          type="text"
-                          name="avatar"
-                          placeholder=""
-                          className="input-field"
-                        />
-                        <label htmlFor="avatar" className="floating-label">
-                          avatar
-                        </label>
-                      </div>
-
-                      <div className="input_err">
-                        <ErrorMessage
-                          name="avatar"
-                          component="div"
-                          className="error-message"
-                        />
-                      </div>
+                      <input
+                        type="file"
+                        id="input-file"
+                        accept="image/*"
+                        onChange={handleImageSelect}
+                      />
+                      <label htmlFor="avatar" className="floating-label">
+                        avatar
+                      </label>
                     </div>
 
                     <button type="submit">
@@ -187,7 +229,7 @@ const Signup = () => {
                           className="input-field"
                         />
                         <label htmlFor="displayName" className="floating-label">
-                          Name
+                          UserName
                         </label>
                       </div>
 

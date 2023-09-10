@@ -26,7 +26,18 @@ import {
   setDoc,
   DocumentReference,
   DocumentData,
+  CollectionReference,
 } from "firebase/firestore";
+interface OtheUserProps {
+  avatar?: string;
+  displayname: string;
+  displayName: string;
+  verified: boolean;
+  following: string[];
+}
+interface OtherUserProps extends OtheUserProps {
+  userRef: DocumentReference<DocumentData>;
+}
 interface UserProps {
   uid: string;
   displayName: string | null;
@@ -35,16 +46,14 @@ interface UserProps {
   verified: boolean;
   avatar?: string;
   likes: string[];
+  following: string[];
 }
 interface PostData {
   text: string;
   image?: string[];
   likes: number;
+  userRef: DocumentReference<DocumentData>;
   postRef: DocumentReference<DocumentData>;
-  displayname: string;
-  displayName: string;
-  verified: boolean;
-  avatar?: string;
 }
 
 type ValueProp = {
@@ -67,6 +76,8 @@ type ValueProp = {
   addToPostStack: (comment: PostData) => void;
   removeToPostStack: () => void;
   clearPostStack: () => void;
+  likeCollection: CollectionReference<DocumentData, DocumentData>;
+  users: OtherUserProps[];
 };
 
 const UserAuthContext = createContext({} as ValueProp);
@@ -74,6 +85,8 @@ const UserAuthContext = createContext({} as ValueProp);
 export function UserAuthContextProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProps | null>(null);
   const [postStack, setPostStack] = useState<PostData[]>([]);
+  const [users, setUsers] = useState<OtherUserProps[]>([]);
+  const likeCollection = collection(db, "likes");
 
   function addToPostStack(comment: PostData) {
     setPostStack((prevPostStack) => [comment, ...prevPostStack]);
@@ -105,6 +118,17 @@ export function UserAuthContextProvider({ children }: { children: ReactNode }) {
       await updateProfile(user, {
         displayName: displayName,
       });
+      const newerUser: UserProps = {
+        uid: userCredential.user.uid,
+        displayName: displayName,
+        email: email,
+        displayname: displayName,
+        verified: false,
+        likes: [],
+        following: [],
+      };
+      setUser(newerUser);
+      console.log(newerUser);
       console.log("Display name set during signup!");
       return user;
     } catch (error) {
@@ -125,8 +149,18 @@ export function UserAuthContextProvider({ children }: { children: ReactNode }) {
         displayName: displayName,
         avatar: avatar,
         verified: false,
+        following: [],
       });
+      user
+        ? setUser({
+            ...user,
+            displayname: displayname,
+            avatar: avatar,
+            verified: false,
+          })
+        : setUser(null);
       console.log("Display name set during signup!");
+      console.log(user);
     } catch (error) {
       console.error("Signup error or error setting display name:", error);
       throw error;
@@ -141,7 +175,23 @@ export function UserAuthContextProvider({ children }: { children: ReactNode }) {
     const googleAuthProvider = new GoogleAuthProvider();
     return signInWithPopup(auth, googleAuthProvider);
   }
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const usersCol = collection(db, "users");
+      const snapshot = await getDocs(usersCol);
 
+      const userss = snapshot.docs.map((doc) => {
+        const userRef = doc.ref;
+        return {
+          ...(doc.data() as OtheUserProps),
+          userRef,
+        };
+      });
+
+      setUsers(userss);
+    };
+    fetchUsers();
+  }, []);
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -159,11 +209,11 @@ export function UserAuthContextProvider({ children }: { children: ReactNode }) {
             email: currentUser.email,
             displayName: currentUser.displayName,
             likes: userData.likes,
+            following: userData.following,
           });
           console.log(user); // Set user state with both userData and currentUser
         } else {
-          console.log("User document not found");
-          setUser(null);
+          console.log("In process");
         }
       } else {
         setUser(null);
@@ -188,6 +238,8 @@ export function UserAuthContextProvider({ children }: { children: ReactNode }) {
         addToPostStack,
         removeToPostStack,
         clearPostStack,
+        likeCollection,
+        users,
       }}
     >
       {children}

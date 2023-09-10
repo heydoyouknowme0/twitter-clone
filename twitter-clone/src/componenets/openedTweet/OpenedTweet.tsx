@@ -5,12 +5,13 @@ import {
   getDocs,
   getDoc,
   collection,
+  doc,
 } from "firebase/firestore";
 
 import Post from "../Feed/Post";
-import TweetBox from "../Feed/TweetBox";
 import { useNavigate } from "react-router";
 import { useUserAuth } from "../../auth";
+import TweetFeed from "../Feed/TweetFeed";
 
 interface CommentData {
   text: string;
@@ -27,50 +28,33 @@ interface UserData {
 }
 
 interface PostData extends CommentData {
-  userRef: DocumentReference<DocumentData>;
   postRef: DocumentReference<DocumentData>;
-  displayname: string;
-  displayName: string;
-  verified: boolean;
-  avatar?: string;
 }
 
 interface OpenedTweetProps extends PostData {}
 
 const OpenedTweet: React.FC<OpenedTweetProps> = ({
-  displayname,
-  displayName,
-  verified,
   text,
   image,
-  avatar,
   likes,
+  userRef,
   postRef,
 }) => {
   const [comments, setComments] = useState<PostData[]>([]);
   const [loading, setLoading] = useState(true); // Added loading state
-
   useEffect(() => {
     const fetchComments = async () => {
       setLoading(true); // Set loading state to true before fetching
 
-      const reff = collection(postRef, "comments");
+      const reff = collection(postRef, "posts");
       const snapshot = await getDocs(reff);
       const commentsData: PostData[] = [];
 
       for (const commentDoc of snapshot.docs) {
         const commentData = commentDoc.data() as CommentData;
-
-        const userDoc = await getDoc(commentData.userRef);
-        const userData: UserData = userDoc.data() as UserData;
-
         const completeCommentData = {
           ...commentData,
           postRef: commentDoc.ref,
-          displayName: userData.displayName,
-          displayname: userData.displayname,
-          verified: userData.verified,
-          avatar: userData.avatar,
         };
         commentsData.push(completeCommentData);
       }
@@ -83,26 +67,29 @@ const OpenedTweet: React.FC<OpenedTweetProps> = ({
   }, [postRef]);
 
   const navigate = useNavigate();
-  const { removeToPostStack } = useUserAuth();
+  const { removeToPostStack, addToPostStack } = useUserAuth();
   const handleGoBack = () => {
     removeToPostStack();
     navigate(-1); // This navigates back by one step in the history
+  };
+  const navigator = useNavigate();
+  const handleNav = (post: PostData) => {
+    addToPostStack(post);
+    navigator(`/home/`);
   };
 
   return (
     <div>
       <button onClick={handleGoBack}>Go Back</button>
       <Post
-        displayname={displayname}
-        displayName={displayName}
-        verified={verified}
+        key={postRef.id}
         text={text}
-        avatar={avatar}
         image={image}
         likes={likes}
+        userRef={userRef}
         postRef={postRef}
       />
-      <TweetBox colRef={collection(postRef, "comments")} />
+
       {loading ? (
         <div className="center">
           <div className="wave"></div>
@@ -117,19 +104,7 @@ const OpenedTweet: React.FC<OpenedTweetProps> = ({
           <div className="wave"></div>
         </div>
       ) : (
-        comments.map((post) => (
-          <Post
-            displayname={post.displayname}
-            displayName={post.displayName}
-            verified={post.verified}
-            text={post.text}
-            avatar={post.avatar}
-            image={post.image}
-            likes={post.likes}
-            postRef={post.postRef}
-            key={post.postRef.id}
-          />
-        ))
+        <TweetFeed posts={comments} handleNav={handleNav} postRef={postRef} />
       )}
     </div>
   );

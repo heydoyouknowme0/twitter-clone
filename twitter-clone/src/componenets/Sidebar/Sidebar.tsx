@@ -12,6 +12,7 @@ import {
   MoreHorizOutlined as MoreIcon,
 } from "@mui/icons-material";
 import UserInfo from "./UserInfo";
+import { Link } from "react-router-dom";
 
 const Sidebar = () => {
   return (
@@ -21,7 +22,9 @@ const Sidebar = () => {
           <div className="sidebar__twitterIcon">
             <Twitter />
           </div>
-          <SidebarOption Icon={HomeOutlinedIcon} text="Home" active />
+          <Link to={"/home"}>
+            <SidebarOption Icon={HomeOutlinedIcon} text="Home" active />
+          </Link>
           <SidebarOption Icon={ExploreOutlinedIcon} text="Explore" />
           <SidebarOption Icon={NotificationIcon} text="Notification" />
           <SidebarOption Icon={MessagesIcon} text="Messages" />

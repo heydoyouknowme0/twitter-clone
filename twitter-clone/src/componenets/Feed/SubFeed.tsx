@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from "react";
-import TweetBox from "./TweetBox";
-import Post from "./Post";
+import React, { useEffect, useRef, useState } from "react";
 import "./Feed.css";
 import {
   DocumentData,
   DocumentReference,
   collection,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+
 import { useUserAuth } from "../../auth";
 import { useNavigate } from "react-router";
+import TweetFeed from "./TweetFeed";
+import { db } from "../../firebase";
 
 interface PostData {
   text: string;
@@ -17,26 +17,36 @@ interface PostData {
   likes: number;
   userRef: DocumentReference<DocumentData>;
   postRef: DocumentReference<DocumentData>;
-  displayname: string;
-  displayName: string;
-  verified: boolean;
-  avatar?: string;
 }
 
 interface SubFeedProps {
-  posts: PostData[];
+  postes: PostData[];
 }
 
-const SubFeed: React.FC<SubFeedProps> = ({ posts }) => {
+const SubFeed: React.FC<SubFeedProps> = ({ postes }) => {
+  const { user } = useUserAuth();
   const [feedSelectbox, setFeedSelectbox] = useState("For You");
-  const { clearPostStack } = useUserAuth();
+  const [posts, setPosts] = useState<PostData[]>(postes);
+  const { clearPostStack, addToPostStack } = useUserAuth();
   useEffect(() => {
     clearPostStack();
-  }, []);
+    if (feedSelectbox === "Following" && user) {
+      const filteredPosts = postes.filter((post) =>
+        user.following.includes(post.userRef.id)
+      );
+      setPosts(filteredPosts);
+    } else {
+      setPosts(postes);
+    }
+  }, [feedSelectbox, postes]);
   const handleFeedSelectbox = (value: string) => {
     setFeedSelectbox(value);
   };
-
+  const navigator = useNavigate();
+  const handleNav = (post: PostData) => {
+    addToPostStack(post);
+    navigator(`/home/`);
+  };
   return (
     <>
       <div className="feed__header">
@@ -66,24 +76,12 @@ const SubFeed: React.FC<SubFeedProps> = ({ posts }) => {
           </div>
         </div>
       </div>
-      <div className="feed__bottom">
-        <TweetBox colRef={collection(db, "posts")} />
-        {/* <FlipMove> */}
-        {posts.map((post) => (
-          <Post // TODO: fix this
-            displayname={post.displayname}
-            displayName={post.displayName}
-            verified={post.verified}
-            text={post.text}
-            avatar={post.avatar}
-            image={post.image}
-            likes={post.likes}
-            postRef={post.postRef}
-            key={post.postRef.id}
-          />
-        ))}
-        {/* </FlipMove> */}
-      </div>
+      <TweetFeed
+        key={posts.length}
+        posts={posts}
+        handleNav={handleNav}
+        postRef={db}
+      />
     </>
   );
 };
